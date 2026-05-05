@@ -2,16 +2,25 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { beginSpotifyLogin, clearSpotifySession, validateSpotifyConfig } from "../services/spotify";
 import { useSpotifyPlayback } from "../hooks/useSpotifyPlayback";
+import { getLyricsSourceMode, onLyricsSourceModeChange, type LyricsSourceMode } from "../services/settings";
 
 export function AuthPopup() {
   const { playback, loading, error } = useSpotifyPlayback();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [sourceMode, setSourceMode] = useState<LyricsSourceMode>(getLyricsSourceMode());
+
+  useEffect(() => onLyricsSourceModeChange(setSourceMode), []);
 
   useEffect(() => {
+    if (sourceMode === "spicy") {
+      invoke("set_auth_popup_visible", { visible: false }).catch(() => undefined);
+      return;
+    }
+
     if (!loading && playback) {
       invoke("set_auth_popup_visible", { visible: false }).catch(() => undefined);
     }
-  }, [loading, playback]);
+  }, [loading, playback, sourceMode]);
 
   useEffect(() => {
     const configError = validateSpotifyConfig();

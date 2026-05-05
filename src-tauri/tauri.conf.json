@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Spotify Lyrics Overlay",
+  "productName": "SpotifyDock",
   "version": "0.1.0",
   "identifier": "com.chris.spotifylyricsoverlay",
   "build": {
@@ -15,30 +15,31 @@
         "label": "control",
         "title": "SpotifyDock",
         "width": 520,
-        "height": 360,
+        "height": 560,
         "minWidth": 460,
-        "minHeight": 320,
+        "minHeight": 420,
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
         "transparent": false,
         "skipTaskbar": false,
         "alwaysOnTop": false,
-        "visible": true,
-        "focus": true
+        "visible": false,
+        "focus": false
       },
       {
         "label": "main",
         "title": "Spotify Lyrics Overlay",
         "width": 800,
-        "height": 120,
+        "height": 132,
         "minWidth": 800,
-        "minHeight": 120,
-        "maxHeight": 120,
+        "minHeight": 132,
+        "maxHeight": 132,
         "resizable": false,
         "fullscreen": false,
         "decorations": false,
         "transparent": true,
+        "backgroundColor": "#00000000",
         "skipTaskbar": true,
         "alwaysOnTop": true,
         "visible": true,
@@ -53,6 +54,7 @@
         "fullscreen": false,
         "decorations": false,
         "transparent": true,
+        "backgroundColor": "#00000000",
         "skipTaskbar": true,
         "alwaysOnTop": true,
         "visible": true,
@@ -80,6 +82,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "windows": {
+      "nsis": {
+        "startMenuFolder": "SpotifyDock"
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

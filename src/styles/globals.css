@@ -25,54 +25,156 @@ body,
 }
 
 .overlay-root {
-  position: fixed;
-  inset: 0;
+  position: relative;
   width: 100%;
   height: 100%;
+  width: 100%;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding-top: 12px;
+  align-items: center;
+  background: transparent !important;
 }
 
 .overlay-shell {
-  width: min(95vw, 800px);
-  min-height: 96px;
-  padding: 14px 24px;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 14px;
   display: grid;
-  grid-template-columns: 240px 1fr auto;
+  grid-template-columns: 112px minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
-  border-radius: 999px;
-  background: rgba(16, 19, 26, 0.56);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(20px) saturate(145%);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  gap: 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(130% 200% at 0% 10%, rgba(var(--cover-primary, 88,110,148), var(--cover-tint-alpha, 0.44)), transparent 60%),
+    radial-gradient(130% 200% at 100% 90%, rgba(var(--cover-secondary, 76,124,108), var(--cover-tint-alpha-2, 0.4)), transparent 58%),
+    linear-gradient(135deg, rgba(13, 16, 24, var(--base-alpha-a, 0.76)), rgba(12, 15, 22, var(--base-alpha-b, 0.72)));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  outline: none;
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
   transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.playback-topbar {
+  position: absolute;
+  top: 6px;
+  left: 138px;
+  right: 14px;
+  display: grid;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.playback-progress-track {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.playback-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.56));
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.16);
+  transition: width 0.1s linear;
+}
+
+.playback-time {
+  justify-self: end;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: rgba(248, 248, 250, 0.74);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.overlay-shell.pill-solid {
+  --cover-tint-alpha: 0.18;
+  --cover-tint-alpha-2: 0.15;
+  --base-alpha-a: calc(var(--pill-shade, 0.56) + 0.26);
+  --base-alpha-b: calc(var(--pill-shade, 0.56) + 0.22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.overlay-shell.pill-acrylic {
+  --cover-tint-alpha: 0.5;
+  --cover-tint-alpha-2: 0.46;
+  --base-alpha-a: 0.64;
+  --base-alpha-b: 0.6;
+}
+
+.overlay-shell.pill-acrylic-shade {
+  --cover-tint-alpha: 0.52;
+  --cover-tint-alpha-2: 0.48;
+  --base-alpha-a: calc(var(--pill-shade, 0.56) + 0.18);
+  --base-alpha-b: calc(var(--pill-shade, 0.56) + 0.14);
 }
 
 .overlay-shell.hidden {
   opacity: 0;
   transform: translateY(-14px);
+  visibility: hidden;
 }
 
 .track-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  width: 112px;
   min-width: 0;
+  justify-self: start;
+}
+.track-info.cover-only {
+  justify-content: center;
+}
+.track-cover-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+.track-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.track-cover.placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
+}
+.track-meta {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 .track-title {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: rgba(248, 248, 250, 0.9);
 }
 
 .track-artist {
-  margin-top: 3px;
-  font-size: 11px;
-  color: rgba(244, 244, 247, 0.75);
+  font-size: 10px;
+  color: rgba(244, 244, 247, 0.68);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -81,63 +183,206 @@ body,
 .lyrics-compact,
 .lyrics-mode {
   min-width: 0;
+  width: 100%;
+  justify-self: stretch;
+}
+.lyrics-compact-stack {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+.lyrics-compact.dense .lyrics-compact-stack {
+  gap: 1px;
+}
+
+.lyric-neighbor {
+  will-change: transform, opacity, filter;
 }
 
 .lyric-line {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  width: 100%;
 }
 
 .lyric-line.left {
   justify-content: flex-start;
-  text-align: left;
 }
 
 .lyric-line.right {
   justify-content: flex-end;
-  text-align: right;
 }
 
 .lyric-line.center {
   justify-content: center;
+}
+
+.lyric-main {
+  display: block;
+  width: min(100%, 620px);
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.lyric-line.left .lyric-main {
+  text-align: left;
+  margin-right: auto;
+  max-width: 100%;
+}
+
+.lyric-line.right .lyric-main {
+  text-align: right;
+  margin-left: auto;
+  max-width: 100%;
+}
+
+.lyric-line.center .lyric-main {
   text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: min(100%, 540px);
 }
 
-.lyric-line.active .lyric-text {
-  font-size: 26px;
-  font-weight: 700;
+.lyric-line.active .lyric-text-main {
+  font-size: 19px;
+  font-weight: 740;
   color: #ffffff;
+  letter-spacing: -0.006em;
+  line-height: 1.14;
 }
 
-.lyric-line.inactive .lyric-text {
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.44);
+.lyric-line.inactive .lyric-text-main {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.38);
+  line-height: 1.08;
+}
+
+.lyrics-compact.dense .lyric-line.active .lyric-text-main {
+  font-size: 22px;
+  font-weight: 790;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
+}
+
+.lyrics-compact.dense .lyric-line.inactive .lyric-text-main {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+  filter: none;
+}
+
+.lyrics-compact.dense .lyric-line.inactive {
+  opacity: 0.68;
 }
 
 .lyric-text {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  word-break: normal;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-break: auto;
+  hyphens: none;
+}
+
+.lyric-word {
+  transition: color 0.22s ease, opacity 0.22s ease, filter 0.22s ease, text-shadow 0.24s ease;
+  --word-progress: 0;
+  --word-glow: 0;
+}
+.lyric-word.paren {
+  font-size: 0.8em;
+  opacity: 0.62;
+  transform: translateY(0.08em);
+}
+
+.lyric-word.timed {
+  color: rgba(255, 255, 255, calc(0.44 + (var(--word-progress) * 0.44)));
+  filter: brightness(calc(0.94 + (var(--word-progress) * 0.12)));
+  text-shadow:
+    0 0 calc(1px + (var(--word-glow) * 2px)) rgba(255, 255, 255, calc(0.01 + (var(--word-glow) * 0.045))),
+    0 0 calc(0.25px + (var(--word-glow) * 0.5px)) rgba(255, 255, 255, calc(0.015 + (var(--word-glow) * 0.04)));
 }
 
 .lyric-segment-paren {
   font-size: 0.8em;
-  opacity: 0.7;
+  opacity: 0.62;
+  transform: translateY(0.08em);
+}
+.lyric-paren-subline {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  font-size: 0.48em;
+  font-weight: 600;
+  opacity: 0.62;
+  letter-spacing: 0.01em;
+  text-align: inherit;
+}
+
+.lyric-text-small {
+  font-size: 14px;
+  line-height: 1.08;
+  opacity: 0.64;
+}
+
+.lyric-paren-subline .lyric-text-small {
+  font-size: 14px !important;
 }
 
 .lyric-singer {
+  display: block;
   font-size: 10px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(248, 248, 250, 0.56);
+  margin-bottom: 1px;
+}
+
+.lyric-wait-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: center;
+  margin-top: 1px;
+  margin-bottom: 1px;
+  height: 10px;
+}
+
+.lyric-wait-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.12);
+  display: inline-block;
 }
 
 .source-label {
-  font-size: 10px;
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  white-space: nowrap;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(248, 248, 250, 0.5);
+  color: rgba(248, 248, 250, 0.44);
+  pointer-events: none;
+}
+
+.alignment-debug {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 3px 6px;
+  pointer-events: none;
 }
 
 .lyric-empty,
@@ -146,6 +391,9 @@ body,
   font-size: 16px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
+}
+.lyric-empty.transparent {
+  opacity: 0;
 }
 
 .auth-popup {
@@ -221,12 +469,16 @@ button.ghost {
 .control-root {
   width: 100%;
   height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #12151d;
   color: #f4f7fb;
   padding: 18px;
 }
 
 .control-card {
+  width: 100%;
+  max-width: 720px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.04);
@@ -257,7 +509,7 @@ button.ghost {
 }
 
 .control-setting select {
-  max-width: 280px;
+  width: min(100%, 360px);
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   background: rgba(10, 12, 18, 0.6);
@@ -266,31 +518,33 @@ button.ghost {
   padding: 8px 10px;
 }
 
+.control-setting input[type="range"] {
+  width: min(100%, 360px);
+}
+
 .control-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-@media (max-width: 900px) {
-  .overlay-shell {
-    grid-template-columns: 1fr;
-    gap: 6px;
-    padding: 10px 16px;
-    border-radius: 28px;
-  }
+.stream-debug-strip {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(6, 10, 18, 0.55);
+  color: rgba(240, 245, 255, 0.82);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
 
-  .track-info,
-  .source-label,
-  .lyric-line {
-    justify-content: center !important;
-    text-align: center !important;
-  }
-
-  .lyric-line.active .lyric-text {
-    font-size: 22px;
-  }
-
+@media (max-width: 700px) {
   .auth-popup {
     align-items: center;
     text-align: center;

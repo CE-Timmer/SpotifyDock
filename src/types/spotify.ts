@@ -31,4 +31,6 @@ export interface PlaybackSnapshot {
   progressMs: number;
   isPlaying: boolean;
   fetchedAt: number;
+  seq?: number;
+  timingSource?: "spicy" | "windows" | "web";
 }

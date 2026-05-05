@@ -1,8 +1,10 @@
 use std::{
+  env,
   fs,
   io::{Read, Write},
   net::{TcpListener, TcpStream},
   path::PathBuf,
+  process::Command,
   sync::{Arc, Mutex},
   thread,
 };
@@ -10,13 +12,38 @@ use std::{
 use tauri::{
   menu::{Menu, MenuItem},
   tray::{TrayIconBuilder, TrayIconEvent},
-  Manager, PhysicalPosition, PhysicalSize, Runtime,
+  Emitter, Manager, PhysicalPosition, PhysicalSize, Runtime,
 };
 use serde_json::Value;
+use serde::Serialize;
+
+#[cfg(target_os = "windows")]
+use windows::Media::Control::{
+  GlobalSystemMediaTransportControlsSessionManager,
+  GlobalSystemMediaTransportControlsSessionPlaybackStatus,
+};
 
 #[derive(Clone)]
 struct SpicyBridgeState {
   latest_payload: Arc<Mutex<Option<String>>>,
+  last_update_ms: Arc<Mutex<u64>>,
+}
+
+#[derive(Clone)]
+struct WindowsMediaState {
+  latest_payload: Arc<Mutex<Option<String>>>,
+}
+
+#[derive(Serialize)]
+struct WindowsMediaTimeline {
+  source_app: String,
+  track_id: String,
+  title: String,
+  artist: String,
+  duration_ms: u64,
+  progress_ms: u64,
+  is_playing: bool,
+  fetched_at: u64,
 }
 
 fn lyrics_cache_path<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
@@ -100,9 +127,99 @@ fn focus_control_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_overlay_click_through(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+  let main = app.get_webview_window("main").ok_or("main window not found")?;
+  main.set_ignore_cursor_events(enabled).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_spicy_bridge_payload(state: tauri::State<SpicyBridgeState>) -> Result<Option<String>, String> {
   let guard = state.latest_payload.lock().map_err(|e| e.to_string())?;
   Ok(guard.clone())
+}
+
+#[tauri::command]
+fn get_spicy_bridge_status(state: tauri::State<SpicyBridgeState>) -> Result<String, String> {
+  let has_payload = state
+    .latest_payload
+    .lock()
+    .map_err(|e| e.to_string())?
+    .is_some();
+  let last_update_ms = *state.last_update_ms.lock().map_err(|e| e.to_string())?;
+
+  Ok(format!(
+    "{{\"hasPayload\":{},\"lastUpdateMs\":{}}}",
+    has_payload, last_update_ms
+  ))
+}
+
+#[tauri::command]
+fn get_windows_media_timeline(state: tauri::State<WindowsMediaState>) -> Result<Option<String>, String> {
+  let guard = state.latest_payload.lock().map_err(|e| e.to_string())?;
+  Ok(guard.clone())
+}
+
+#[cfg(target_os = "windows")]
+fn timespan_to_ms(duration_100ns: i64) -> u64 {
+  if duration_100ns <= 0 {
+    return 0;
+  }
+  (duration_100ns as u64) / 10_000
+}
+
+#[cfg(target_os = "windows")]
+fn query_windows_media_timeline() -> Option<WindowsMediaTimeline> {
+  let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().ok()?.get().ok()?;
+  let session = manager.GetCurrentSession().ok()?;
+
+  let source_app = session.SourceAppUserModelId().ok().map(|s| s.to_string()).unwrap_or_default();
+  let source_lower = source_app.to_lowercase();
+  if !source_lower.contains("spotify") {
+    return None;
+  }
+
+  let playback_info = session.GetPlaybackInfo().ok()?;
+  let playback_status = playback_info.PlaybackStatus().ok()?;
+  let is_playing = matches!(
+    playback_status,
+    GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing
+  );
+
+  let timeline = session.GetTimelineProperties().ok()?;
+  let duration_ms = timespan_to_ms(timeline.EndTime().ok()?.Duration);
+  let progress_ms = timespan_to_ms(timeline.Position().ok()?.Duration);
+
+  let media_props = session.TryGetMediaPropertiesAsync().ok()?.get().ok()?;
+  let title = media_props.Title().ok().map(|s| s.to_string()).unwrap_or_default();
+  let artist = media_props.Artist().ok().map(|s| s.to_string()).unwrap_or_default();
+
+  let fetched_at = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .map(|d| d.as_millis() as u64)
+    .unwrap_or(0);
+
+  let track_id = format!(
+    "winmedia:{}:{}:{}",
+    title.trim().to_lowercase(),
+    artist.trim().to_lowercase(),
+    duration_ms
+  );
+
+  Some(WindowsMediaTimeline {
+    source_app,
+    track_id,
+    title,
+    artist,
+    duration_ms,
+    progress_ms,
+    is_playing,
+    fetched_at,
+  })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn query_windows_media_timeline() -> Option<WindowsMediaTimeline> {
+  None
 }
 
 fn respond(stream: &mut TcpStream, status: &str, body: &str) {
@@ -114,7 +231,12 @@ fn respond(stream: &mut TcpStream, status: &str, body: &str) {
   let _ = stream.flush();
 }
 
-fn handle_bridge_connection(mut stream: TcpStream, shared: &Arc<Mutex<Option<String>>>) {
+fn handle_bridge_connection(
+  mut stream: TcpStream,
+  shared: &Arc<Mutex<Option<String>>>,
+  last_update_ms: &Arc<Mutex<u64>>,
+  app_handle: &tauri::AppHandle,
+) {
   let mut buffer = vec![0_u8; 256 * 1024];
   let bytes_read = match stream.read(&mut buffer) {
     Ok(n) => n,
@@ -148,6 +270,12 @@ fn handle_bridge_connection(mut stream: TcpStream, shared: &Arc<Mutex<Option<Str
   }
 
   if method == "GET" && path == "/v1/current-track" {
+    if let Ok(mut guard) = last_update_ms.lock() {
+      *guard = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    }
     let payload = shared
       .lock()
       .ok()
@@ -168,9 +296,17 @@ fn handle_bridge_connection(mut stream: TcpStream, shared: &Arc<Mutex<Option<Str
 
     match serde_json::from_str::<Value>(&body) {
       Ok(value) => {
+        let serialized = value.to_string();
         if let Ok(mut guard) = shared.lock() {
-          *guard = Some(value.to_string());
+          *guard = Some(serialized.clone());
         }
+        if let Ok(mut guard) = last_update_ms.lock() {
+          *guard = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        }
+        let _ = app_handle.emit("spicy-bridge-update", serialized);
         respond(&mut stream, "200 OK", "{\"ok\":true}");
       }
       Err(_) => {
@@ -183,7 +319,11 @@ fn handle_bridge_connection(mut stream: TcpStream, shared: &Arc<Mutex<Option<Str
   respond(&mut stream, "404 Not Found", "{\"ok\":false,\"error\":\"not-found\"}");
 }
 
-fn start_spicy_bridge_server(shared: Arc<Mutex<Option<String>>>) {
+fn start_spicy_bridge_server(
+  shared: Arc<Mutex<Option<String>>>,
+  last_update_ms: Arc<Mutex<u64>>,
+  app_handle: tauri::AppHandle,
+) {
   thread::spawn(move || {
     let listener = match TcpListener::bind("127.0.0.1:61337") {
       Ok(l) => l,
@@ -195,9 +335,29 @@ fn start_spicy_bridge_server(shared: Arc<Mutex<Option<String>>>) {
 
     for stream in listener.incoming() {
       if let Ok(stream) = stream {
-        handle_bridge_connection(stream, &shared);
+        handle_bridge_connection(stream, &shared, &last_update_ms, &app_handle);
       }
     }
+  });
+}
+
+fn start_windows_media_monitor(
+  shared: Arc<Mutex<Option<String>>>,
+  app_handle: tauri::AppHandle,
+) {
+  thread::spawn(move || loop {
+    let payload = query_windows_media_timeline()
+      .and_then(|data| serde_json::to_string(&data).ok());
+
+    if let Ok(mut guard) = shared.lock() {
+      *guard = payload.clone();
+    }
+
+    if let Some(serialized) = payload {
+      let _ = app_handle.emit("windows-media-update", serialized);
+    }
+
+    thread::sleep(std::time::Duration::from_millis(500));
   });
 }
 
@@ -208,6 +368,7 @@ fn setup_window(app: &tauri::App) {
 
   if let Some(window) = app.get_webview_window("main") {
     let _ = window.set_always_on_top(true);
+    let _ = window.set_shadow(false);
 
     if let Ok(Some(monitor)) = window.primary_monitor() {
       let size = monitor.size();
@@ -215,12 +376,13 @@ fn setup_window(app: &tauri::App) {
       x = ((size.width as i32 - 800) / 2).max(0);
       y = 16;
       let _ = window.set_position(PhysicalPosition::new(x, y));
-      let _ = window.set_size(PhysicalSize::new(800, 120));
+      let _ = window.set_size(PhysicalSize::new(800, 132));
     }
   }
 
   if let Some(hover_zone) = app.get_webview_window("hover-zone") {
     let _ = hover_zone.set_always_on_top(true);
+    let _ = hover_zone.set_shadow(false);
     let _ = hover_zone.set_position(PhysicalPosition::new(x, 0));
     let _ = hover_zone.set_size(PhysicalSize::new(800, 10));
   }
@@ -234,22 +396,35 @@ fn setup_window(app: &tauri::App) {
   }
 }
 
+#[cfg(target_os = "windows")]
+fn apply_native_overlay_vibrancy(window: &tauri::WebviewWindow) {
+  let _ = window_vibrancy::apply_mica(window, Some(true))
+    .or_else(|_| window_vibrancy::apply_acrylic(window, Some((16, 19, 26, 120))))
+    .or_else(|_| window_vibrancy::apply_blur(window, Some((16, 19, 26, 120))));
+}
+
+#[cfg(not(target_os = "windows"))]
+fn apply_native_overlay_vibrancy(_window: &tauri::WebviewWindow) {}
+
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
   let open_control = MenuItem::with_id(app, "open_control", "Open SpotifyDock", true, None::<&str>)?;
   let show_overlay = MenuItem::with_id(app, "show_overlay", "Show Overlay", true, None::<&str>)?;
   let hide_overlay = MenuItem::with_id(app, "hide_overlay", "Hide Overlay", true, None::<&str>)?;
   let connect_spotify = MenuItem::with_id(app, "connect_spotify", "Connect Spotify", true, None::<&str>)?;
+  let restart = MenuItem::with_id(app, "restart_dock", "Restart Dock", true, None::<&str>)?;
   let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
   let menu = Menu::with_items(
     app,
-    &[&open_control, &show_overlay, &hide_overlay, &connect_spotify, &quit],
+    &[&open_control, &show_overlay, &hide_overlay, &connect_spotify, &restart, &quit],
   )?;
 
+  let tray_icon = tauri::include_image!("icons/32x32.png");
+
   TrayIconBuilder::new()
-    .icon(app.default_window_icon().cloned().ok_or_else(|| tauri::Error::AssetNotFound("Default icon missing".into()))?)
+    .icon(tray_icon)
     .menu(&menu)
-    .show_menu_on_left_click(true)
+    .show_menu_on_left_click(false)
     .on_menu_event(|app_handle, event| {
       match event.id().as_ref() {
         "open_control" => {
@@ -280,6 +455,12 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
             let _ = popup.set_focus();
           }
         }
+        "restart_dock" => {
+          if let Ok(exe) = env::current_exe() {
+            let _ = Command::new(exe).spawn();
+          }
+          app_handle.exit(0);
+        }
         "quit" => {
           app_handle.exit(0);
         }
@@ -287,7 +468,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
       }
     })
     .on_tray_icon_event(|tray, event| {
-      if let TrayIconEvent::DoubleClick { .. } = event {
+      if matches!(event, TrayIconEvent::Click { .. } | TrayIconEvent::DoubleClick { .. }) {
         if let Some(control) = tray.app_handle().get_webview_window("control") {
           let _ = control.show();
           let _ = control.set_focus();
@@ -303,11 +484,18 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
 pub fn run() {
   let spicy_bridge_state = SpicyBridgeState {
     latest_payload: Arc::new(Mutex::new(None)),
+    last_update_ms: Arc::new(Mutex::new(0)),
   };
   let spicy_bridge_shared = spicy_bridge_state.latest_payload.clone();
+  let spicy_bridge_last_update = spicy_bridge_state.last_update_ms.clone();
+  let windows_media_state = WindowsMediaState {
+    latest_payload: Arc::new(Mutex::new(None)),
+  };
+  let windows_media_shared = windows_media_state.latest_payload.clone();
 
   tauri::Builder::default()
     .manage(spicy_bridge_state)
+    .manage(windows_media_state)
     .setup(move |app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -321,7 +509,15 @@ pub fn run() {
         tauri_plugin_autostart::MacosLauncher::LaunchAgent,
         None,
       ))?;
-      start_spicy_bridge_server(spicy_bridge_shared.clone());
+      start_spicy_bridge_server(
+        spicy_bridge_shared.clone(),
+        spicy_bridge_last_update.clone(),
+        app.handle().clone(),
+      );
+      start_windows_media_monitor(
+        windows_media_shared.clone(),
+        app.handle().clone(),
+      );
       setup_window(app);
       setup_tray(app)?;
       Ok(())
@@ -331,9 +527,12 @@ pub fn run() {
       save_lyrics_file,
       lyrics_cache_dir,
       get_spicy_bridge_payload,
+      get_spicy_bridge_status,
+      get_windows_media_timeline,
       set_auth_popup_visible,
       set_overlay_visible,
-      focus_control_window
+      focus_control_window,
+      set_overlay_click_through
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -1,10 +1,18 @@
+export interface LyricWord {
+  text: string;
+  startTime: number;
+  endTime?: number;
+}
+
 export interface LyricLine {
   id: string;
   time: number;
   duration?: number;
   text: string;
+  secondaryText?: string;
   side?: "left" | "right" | "center";
   singer?: string;
+  words?: LyricWord[];
 }
 
 export interface LyricSegment {
