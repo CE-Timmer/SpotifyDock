@@ -11,9 +11,12 @@ It sits at the top of your screen as an always-on-top overlay, follows the curre
 
 > Place your screenshots in `docs/readme/` with the file names below to render them in GitHub.
 
-![SpotifyDock desktop overlay](./docs/readme/spotifydock-desktop.png)
+- Desktop example:
+<img width="1076" height="292" alt="image" src="https://github.com/user-attachments/assets/943f4fbb-b9fd-48f2-a4c2-17afcd1ab917" />
 
-![SpotifyDock close-up overlay](./docs/readme/spotifydock-closeup.png)
+- Close-up example:
+<img width="807" height="126" alt="image" src="https://github.com/user-attachments/assets/af9a7f57-060e-4724-9919-5b81b4d2835d" />
+
 
 ## Features
 
