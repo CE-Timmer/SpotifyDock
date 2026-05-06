@@ -4,9 +4,10 @@ import { getLeftPanelMode, onLeftPanelModeChange, type LeftPanelMode } from "../
 
 interface TrackInfoProps {
   playback: PlaybackSnapshot;
+  variant?: "default" | "no-lyrics";
 }
 
-export function TrackInfo({ playback }: TrackInfoProps) {
+export function TrackInfo({ playback, variant = "default" }: TrackInfoProps) {
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>(getLeftPanelMode());
   const [coverFailed, setCoverFailed] = useState(false);
   useEffect(() => onLeftPanelModeChange(setLeftPanelMode), []);
@@ -16,9 +17,10 @@ export function TrackInfo({ playback }: TrackInfoProps) {
 
   const coverUrl = normalizeCoverUrl(playback.albumCoverUrl);
   const showCover = Boolean(coverUrl) && !coverFailed;
+  const noLyricsVariant = variant === "no-lyrics";
 
   return (
-    <div className={`track-info ${leftPanelMode === "cover-only" ? "cover-only" : ""}`}>
+    <div className={`track-info ${leftPanelMode === "cover-only" ? "cover-only" : ""}${noLyricsVariant ? " no-lyrics" : ""}`}>
       <div className="track-cover-wrap">
         {showCover ? (
           <img
@@ -32,7 +34,7 @@ export function TrackInfo({ playback }: TrackInfoProps) {
           <div className="track-cover placeholder" />
         )}
       </div>
-      {leftPanelMode === "cover-meta" ? (
+      {leftPanelMode === "cover-meta" || noLyricsVariant ? (
         <div className="track-meta">
           <div className="track-title">{playback.title}</div>
           <div className="track-artist">{playback.artists.join(", ")}</div>

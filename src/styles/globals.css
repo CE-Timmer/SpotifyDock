@@ -58,6 +58,20 @@ body,
   transition: opacity 0.24s ease, transform 0.24s ease;
 }
 
+.overlay-content-grid {
+  display: contents;
+}
+
+.overlay-shell.no-lyrics-compact {
+  width: 260px;
+  max-width: 304px;
+  height: 104px;
+  padding: 10px 14px;
+  gap: 6px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
 .playback-topbar {
   position: absolute;
   top: 6px;
@@ -132,6 +146,31 @@ body,
   min-width: 0;
   justify-self: start;
 }
+
+.track-info.no-lyrics {
+  width: 112px;
+  min-width: 112px;
+  align-self: stretch;
+  justify-content: center;
+  gap: 6px;
+}
+
+.track-info.no-lyrics .track-meta {
+  width: 112px;
+  min-width: 112px;
+  gap: 1px;
+  overflow: visible;
+}
+
+.track-info.no-lyrics .track-title {
+  line-height: 1.12;
+}
+
+.track-info.no-lyrics .track-artist {
+  line-height: 1.12;
+  overflow: visible;
+  text-overflow: clip;
+}
 .track-info.cover-only {
   justify-content: center;
 }
@@ -185,6 +224,85 @@ body,
   min-width: 0;
   width: 100%;
   justify-self: stretch;
+}
+
+.no-lyrics-state {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 112px 88px;
+  justify-content: center;
+  gap: 25px;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.no-lyrics-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  min-width: 88px;
+  height: 100%;
+}
+
+.no-lyrics-progress {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+}
+
+.no-lyrics-progress-svg {
+  width: 82px;
+  height: 82px;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.no-lyrics-progress-track,
+.no-lyrics-progress-ring {
+  fill: none;
+  stroke-width: 4;
+}
+
+.no-lyrics-progress-track {
+  stroke: rgba(255, 255, 255, 0.14);
+}
+
+.no-lyrics-progress-ring {
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.12));
+  transition: stroke-dashoffset 0.22s linear;
+}
+
+.no-lyrics-progress-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.no-lyrics-progress-current {
+  font-size: 13px;
+  font-weight: 750;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.no-lyrics-progress-total {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(244, 244, 247, 0.58);
+  line-height: 1;
 }
 .lyrics-compact-stack {
   display: grid;

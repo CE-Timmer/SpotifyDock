@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence } from "framer-motion";
 import { cursorPosition, getCurrentWindow, PhysicalPosition, PhysicalSize } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -19,6 +20,7 @@ import {
 } from "../services/settings";
 import { TrackInfo } from "./TrackInfo";
 import { LyricRenderer } from "./LyricRenderer";
+import { NoLyricsState } from "./NoLyricsState";
 import { extractAlbumColors } from "../services/colorExtractor";
 import { subscribeToSpicyBridgeUpdates } from "../services/spicetifyBridge";
 
@@ -313,6 +315,8 @@ export function Overlay() {
   const safeDurationMs = playback?.durationMs ?? 0;
   const safeProgressMs = Math.max(0, Math.min(displayProgressMs, safeDurationMs || displayProgressMs || 0));
   const progressRatio = safeDurationMs > 0 ? Math.max(0, Math.min(1, safeProgressMs / safeDurationMs)) : 0;
+  const hasActiveLyrics = Boolean(current);
+  const noLyricsCompact = Boolean(playback && !hasActiveLyrics);
   const spicyBridgeMessage = bridgeStatus?.connected
     ? playback
       ? "Bridge connected"
@@ -443,7 +447,7 @@ export function Overlay() {
   return (
     <div className="overlay-root" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <div
-        className={`overlay-shell pill-${pillStyleMode}${hidden || autoHiddenByPlayback ? " hidden" : ""}`}
+        className={`overlay-shell pill-${pillStyleMode}${hidden || autoHiddenByPlayback ? " hidden" : ""}${noLyricsCompact ? " no-lyrics-compact" : ""}`}
         style={
           {
             "--pill-shade": String(pillShade),
@@ -452,7 +456,7 @@ export function Overlay() {
           } as CSSProperties
         }
       >
-        {playback ? (
+        {playback && hasActiveLyrics ? (
           <div className="playback-topbar">
             <div className="playback-progress-track">
               <div className="playback-progress-fill" style={{ width: `${progressRatio * 100}%` }} />
@@ -463,15 +467,26 @@ export function Overlay() {
           </div>
         ) : null}
         {playback ? (
-          <>
-            <TrackInfo playback={playback} />
-            <LyricRenderer previous={previous} current={current} next={next} progressMs={safeProgressMs} compact />
-            {alignmentDebugEnabled && current ? (
-              <div className="alignment-debug">
-                SIDE: {(current.side ?? "center").toUpperCase()}
+          <AnimatePresence mode="wait" initial={false}>
+            {hasActiveLyrics ? (
+              <div key="lyrics-live" className="overlay-content-grid">
+                <TrackInfo playback={playback} />
+                <LyricRenderer previous={previous} current={current} next={next} progressMs={safeProgressMs} compact />
+                {alignmentDebugEnabled && current ? (
+                  <div className="alignment-debug">
+                    SIDE: {(current.side ?? "center").toUpperCase()}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </>
+            ) : (
+              <NoLyricsState
+                key="lyrics-empty"
+                playback={playback}
+                progressMs={safeProgressMs}
+                durationMs={safeDurationMs}
+              />
+            )}
+          </AnimatePresence>
         ) : (
           <div className="idle-state">{sourceMode === "spicy" ? spicyBridgeMessage : "Waiting for playback..."}</div>
         )}

@@ -41,15 +41,24 @@ export function useLyrics(playback: PlaybackSnapshot | null) {
     if (sourceMode === "spicy") {
       let streamUnlisten: (() => void) | null = null;
       let retryTimer: number | null = null;
-      const FAST_RETRY_MS = 500;
-      const SLOW_RETRY_MS = 1200;
+      const BURST_RETRY_MS = 140;
+      const FAST_RETRY_MS = 260;
+      const SLOW_RETRY_MS = 900;
+      const BURST_WINDOW_MS = 5000;
+      const startedAtMs = Date.now();
+
+      const getRetryDelay = (hasLyrics: boolean) => {
+        if (hasLyrics) return SLOW_RETRY_MS;
+        const inBurstWindow = Date.now() - startedAtMs < BURST_WINDOW_MS;
+        return inBurstWindow ? BURST_RETRY_MS : FAST_RETRY_MS;
+      };
 
       const scheduleSync = (delayMs: number) => {
         if (!alive) return;
         if (retryTimer) window.clearTimeout(retryTimer);
         retryTimer = window.setTimeout(() => {
           void syncFromBridge().then((hasLyrics) => {
-            scheduleSync(hasLyrics ? SLOW_RETRY_MS : FAST_RETRY_MS);
+            scheduleSync(getRetryDelay(hasLyrics));
           });
         }, delayMs);
       };
@@ -77,7 +86,7 @@ export function useLyrics(playback: PlaybackSnapshot | null) {
       };
 
       void syncFromBridge().then((hasLyrics) => {
-        scheduleSync(hasLyrics ? SLOW_RETRY_MS : FAST_RETRY_MS);
+        scheduleSync(getRetryDelay(hasLyrics));
       });
       subscribeToSpicyBridgeUpdates((payload) => {
         if (!alive) return;
@@ -106,7 +115,7 @@ export function useLyrics(playback: PlaybackSnapshot | null) {
           scheduleSync(SLOW_RETRY_MS);
         } else {
           setLyricsFile(null);
-          scheduleSync(FAST_RETRY_MS);
+          scheduleSync(getRetryDelay(false));
         }
       })
         .then((unlisten) => {
