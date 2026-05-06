@@ -182,7 +182,7 @@ export function ControlPanel() {
             value={lyricsSourceMode}
             onChange={(e) => onSourceModeChange(e.target.value as LyricsSourceMode)}
           >
-            <option value="spicy">Spicy Lyrics</option>
+            <option value="spicy">DockBridge</option>
             <option value="backup">Backup (LRCLIB + Cache)</option>
           </select>
         </div>

@@ -8,7 +8,7 @@ SpotifyDock is a Windows-first desktop lyrics overlay for Spotify built with Tau
 
 It sits at the top of your screen as an always-on-top overlay, follows the current track, renders synced lyrics with smooth transitions, and can use either:
 
-- original **Spicy Lyrics + `dockbridge.js`** for rich synced lyrics
+- **DockBridge** mode (powered by original Spicy Lyrics + `dockbridge.js`) for rich synced lyrics
 - **LRCLIB + local cache** as a backup mode
 
 ## Preview
@@ -29,7 +29,7 @@ It sits at the top of your screen as an always-on-top overlay, follows the curre
 - Autostart support
 - Dedicated control/settings window
 - Optional Spotify auth popup for backup playback mode
-- Spicy Lyrics source mode for best synced lyrics support
+- DockBridge source mode for best synced lyrics support
 - Backup lyrics mode using LRCLIB + local cache
 - Left / center / right lyric alignment
 - Secondary sub-lines and parentheses styling
@@ -42,7 +42,7 @@ It sits at the top of your screen as an always-on-top overlay, follows the curre
 
 SpotifyDock supports two lyrics pipelines:
 
-### 1. Spicy Lyrics mode
+### 1. DockBridge mode
 
 Recommended if you already use Spicetify and want the richest synced lyrics behavior.
 
@@ -100,7 +100,7 @@ SpotifyDock/
 - Windows
 - Spotify desktop app
 
-For Spicy mode:
+For DockBridge mode:
 
 - Spicetify
 - original `spicy-lyrics.js`
@@ -177,9 +177,9 @@ Typical Windows outputs:
 - `.exe` installer
 - `.msi` installer
 
-## Using Spicy Lyrics Mode
+## Using DockBridge Mode
 
-SpotifyDock works best with the original Spicy Lyrics extension plus the sidecar bridge.
+SpotifyDock works best with the original Spicy Lyrics extension plus the DockBridge sidecar.
 
 ### Recommended extension setup
 
@@ -307,7 +307,7 @@ SpotifyDock currently exposes two helper modes:
 - `Windows Media Helper`
 - `Spotify Web API Helper`
 
-These assist playback anchoring depending on your chosen setup, while the main overlay still prefers the bridge stream when available in Spicy mode.
+These assist playback anchoring depending on your chosen setup, while the main overlay still prefers the bridge stream when available in DockBridge mode.
 
 ## Tray and Window Behavior
 
@@ -329,7 +329,7 @@ Windows created by the app:
 
 ## Notes
 
-- Spicy mode is the preferred setup for rich synced lyrics behavior
+- DockBridge mode is the preferred setup for rich synced lyrics behavior
 - Backup mode exists for resilience and simpler standalone playback support
 - Original Spicy Lyrics should remain separate from DockBridge
 - `dockbridge.js` should be treated as a sidecar extension, not a replacement renderer
@@ -340,7 +340,7 @@ Windows created by the app:
 
 Check:
 
-- `Lyrics Source` is set to `Spicy Lyrics`
+- `Lyrics Source` is set to `DockBridge`
 - `spicy-lyrics.js` is installed
 - `dockbridge.js` is installed
 - `spicetify apply` has been run
