@@ -359,4 +359,11 @@ Use one of these:
 
 ## License
 
-This project currently has no license file in the repository. Add one before public distribution if needed.
+SpotifyDock is licensed under the [MIT License](./LICENSE).
+
+That means you can use, modify, publish, and redistribute the code, including for commercial use, as long as the original copyright and license notice stay with it.
+
+Note:
+
+- this README section applies to the `SpotifyDock` app repo
+- `dockbridge.js` / `SpicyDockBridge` is a separate project with its own license and attribution requirements
