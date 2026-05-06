@@ -89,8 +89,6 @@ SpotifyDock/
   src-tauri/
     src/
     icons/
-  docs/
-    readme/
 ```
 
 ## Requirements
