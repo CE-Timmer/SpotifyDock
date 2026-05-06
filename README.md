@@ -48,8 +48,8 @@ Recommended if you already use Spicetify and want the richest synced lyrics beha
 
 Flow:
 
-- original `spicy-lyrics.js` stays installed as the full renderer/core
-- separate `dockbridge.js` runs beside it as a sidecar bridge
+- `dockbridge.js` provides track + lyric stream directly to SpotifyDock
+- original `spicy-lyrics.js` is optional (only needed if you also want its UI in Spotify)
 - `dockbridge.js` sends normalized track and lyric payloads to SpotifyDock
 - SpotifyDock renders the overlay from that stream
 
@@ -103,7 +103,6 @@ SpotifyDock/
 For DockBridge mode:
 
 - Spicetify
-- original `spicy-lyrics.js`
 - separate `dockbridge.js`
 
 For backup mode:
@@ -179,16 +178,17 @@ Typical Windows outputs:
 
 ## Using DockBridge Mode
 
-SpotifyDock works best with the original Spicy Lyrics extension plus the DockBridge sidecar.
+SpotifyDock works with `dockbridge.js` alone. Original Spicy Lyrics is optional.
 
 ### Recommended extension setup
 
-Keep these installed together:
+Required:
 
-- original `spicy-lyrics.js`
-- separate `dockbridge.js`
+- `dockbridge.js`
 
-Do **not** replace original Spicy Lyrics with DockBridge.
+Optional add-on:
+
+- original `spicy-lyrics.js` if you also want the original Spicy Lyrics UI
 
 ### Spicetify extension folder
 
@@ -198,10 +198,13 @@ Typical location:
 %APPDATA%\spicetify\Extensions
 ```
 
-Expected files:
+Minimum expected file:
+
+- `dockbridge.js`
+
+Optional additional file:
 
 - `spicy-lyrics.js`
-- `dockbridge.js`
 
 Then run:
 
@@ -331,7 +334,7 @@ Windows created by the app:
 
 - DockBridge mode is the preferred setup for rich synced lyrics behavior
 - Backup mode exists for resilience and simpler standalone playback support
-- Original Spicy Lyrics should remain separate from DockBridge
+- Original Spicy Lyrics is optional and can run separately beside DockBridge
 - `dockbridge.js` should be treated as a sidecar extension, not a replacement renderer
 
 ## Troubleshooting
@@ -341,7 +344,6 @@ Windows created by the app:
 Check:
 
 - `Lyrics Source` is set to `DockBridge`
-- `spicy-lyrics.js` is installed
 - `dockbridge.js` is installed
 - `spicetify apply` has been run
 - Spotify has been restarted
