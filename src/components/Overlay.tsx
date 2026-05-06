@@ -358,6 +358,10 @@ export function Overlay() {
   }, [hoverZoneWidth]);
 
   useEffect(() => {
+    invoke("set_overlay_mode_compact", { compact: noLyricsCompact }).catch(() => undefined);
+  }, [noLyricsCompact]);
+
+  useEffect(() => {
     if (!playback) {
       setDisplayProgressMs(0);
       lastTitleRef.current = null;

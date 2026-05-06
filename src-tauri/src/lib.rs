@@ -168,6 +168,45 @@ fn set_hover_zone_width(app: tauri::AppHandle, width: u32) -> Result<(), String>
 }
 
 #[tauri::command]
+fn set_overlay_mode_compact(app: tauri::AppHandle, compact: bool) -> Result<(), String> {
+  let main = app.get_webview_window("main").ok_or("main window not found")?;
+  let hover = app.get_webview_window("hover-zone").ok_or("hover window not found")?;
+
+  let target_width: u32 = if compact { 304 } else { 800 };
+  let target_height: u32 = 132;
+
+  let monitor = main
+    .current_monitor()
+    .map_err(|e| e.to_string())?
+    .or_else(|| main.primary_monitor().ok().flatten());
+
+  let (x, y) = if let Some(m) = monitor {
+    let size = m.size();
+    let centered_x = ((size.width as i32 - target_width as i32) / 2).max(0);
+    (centered_x, 16)
+  } else {
+    let pos = main.outer_position().map_err(|e| e.to_string())?;
+    (pos.x, 16)
+  };
+
+  main
+    .set_position(PhysicalPosition::new(x, y))
+    .map_err(|e| e.to_string())?;
+  main
+    .set_size(PhysicalSize::new(target_width, target_height))
+    .map_err(|e| e.to_string())?;
+
+  hover
+    .set_position(PhysicalPosition::new(x, 0))
+    .map_err(|e| e.to_string())?;
+  hover
+    .set_size(PhysicalSize::new(target_width, 10))
+    .map_err(|e| e.to_string())?;
+
+  Ok(())
+}
+
+#[tauri::command]
 fn get_spicy_bridge_payload(state: tauri::State<SpicyBridgeState>) -> Result<Option<String>, String> {
   let guard = state.latest_payload.lock().map_err(|e| e.to_string())?;
   Ok(guard.clone())
@@ -594,7 +633,8 @@ pub fn run() {
       focus_control_window,
       set_overlay_click_through,
       set_hover_zone_enabled,
-      set_hover_zone_width
+      set_hover_zone_width,
+      set_overlay_mode_compact
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

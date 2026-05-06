@@ -8,7 +8,7 @@ SpotifyDock is a Windows-first desktop lyrics overlay for Spotify built with Tau
 
 It sits at the top of your screen as an always-on-top overlay, follows the current track, renders synced lyrics with smooth transitions, and can use either:
 
-- **DockBridge** mode (powered by original Spicy Lyrics + `dockbridge.js`) for rich synced lyrics
+- **DockBridge** mode (powered by original Spicy Lyrics + [dockbridge.js](https://github.com/CE-Timmer/DockBridge)) for rich synced lyrics
 - **LRCLIB + local cache** as a backup mode
 
 ## Preview
