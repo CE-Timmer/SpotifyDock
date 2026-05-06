@@ -6,6 +6,28 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/.tauri/
+*.tsbuildinfo
+
+# Bundled installers / binaries
+*.msi
+*.exe
+*.app
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+
+# Environment / local-only runtime config
 .env
 *.local
 
