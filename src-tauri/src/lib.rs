@@ -6,6 +6,7 @@ use std::{
   path::PathBuf,
   process::Command,
   sync::{Arc, Mutex},
+  sync::atomic::{AtomicBool, Ordering},
   thread,
 };
 
@@ -32,6 +33,7 @@ struct SpicyBridgeState {
 #[derive(Clone)]
 struct WindowsMediaState {
   latest_payload: Arc<Mutex<Option<String>>>,
+  enabled: Arc<AtomicBool>,
 }
 
 #[derive(Serialize)]
@@ -143,6 +145,29 @@ fn set_hover_zone_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), St
 }
 
 #[tauri::command]
+fn set_hover_zone_width(app: tauri::AppHandle, width: u32) -> Result<(), String> {
+  let main = app.get_webview_window("main").ok_or("main window not found")?;
+  let hover = app.get_webview_window("hover-zone").ok_or("hover window not found")?;
+
+  let main_pos = main.outer_position().map_err(|e| e.to_string())?;
+  let main_size = main.outer_size().map_err(|e| e.to_string())?;
+
+  let max_width = main_size.width.max(1);
+  let clamped_width = width.clamp(120, max_width);
+  let x_offset = ((max_width - clamped_width) / 2) as i32;
+  let hover_x = main_pos.x + x_offset;
+
+  hover
+    .set_position(PhysicalPosition::new(hover_x, 0))
+    .map_err(|e| e.to_string())?;
+  hover
+    .set_size(PhysicalSize::new(clamped_width, 10))
+    .map_err(|e| e.to_string())?;
+
+  Ok(())
+}
+
+#[tauri::command]
 fn get_spicy_bridge_payload(state: tauri::State<SpicyBridgeState>) -> Result<Option<String>, String> {
   let guard = state.latest_payload.lock().map_err(|e| e.to_string())?;
   Ok(guard.clone())
@@ -167,6 +192,15 @@ fn get_spicy_bridge_status(state: tauri::State<SpicyBridgeState>) -> Result<Stri
 fn get_windows_media_timeline(state: tauri::State<WindowsMediaState>) -> Result<Option<String>, String> {
   let guard = state.latest_payload.lock().map_err(|e| e.to_string())?;
   Ok(guard.clone())
+}
+
+#[tauri::command]
+fn set_windows_media_helper_enabled(
+  state: tauri::State<WindowsMediaState>,
+  enabled: bool,
+) -> Result<(), String> {
+  state.enabled.store(enabled, Ordering::Relaxed);
+  Ok(())
 }
 
 #[cfg(target_os = "windows")]
@@ -353,9 +387,16 @@ fn start_spicy_bridge_server(
 
 fn start_windows_media_monitor(
   shared: Arc<Mutex<Option<String>>>,
+  enabled: Arc<AtomicBool>,
   app_handle: tauri::AppHandle,
 ) {
+  let mut last_emitted: Option<String> = None;
   thread::spawn(move || loop {
+    if !enabled.load(Ordering::Relaxed) {
+      thread::sleep(std::time::Duration::from_millis(1800));
+      continue;
+    }
+
     let payload = query_windows_media_timeline()
       .and_then(|data| serde_json::to_string(&data).ok());
 
@@ -364,10 +405,15 @@ fn start_windows_media_monitor(
     }
 
     if let Some(serialized) = payload {
-      let _ = app_handle.emit("windows-media-update", serialized);
+      if last_emitted.as_deref() != Some(serialized.as_str()) {
+        last_emitted = Some(serialized.clone());
+        let _ = app_handle.emit("windows-media-update", serialized);
+      }
+    } else {
+      last_emitted = None;
     }
 
-    thread::sleep(std::time::Duration::from_millis(500));
+    thread::sleep(std::time::Duration::from_millis(1200));
   });
 }
 
@@ -500,8 +546,10 @@ pub fn run() {
   let spicy_bridge_last_update = spicy_bridge_state.last_update_ms.clone();
   let windows_media_state = WindowsMediaState {
     latest_payload: Arc::new(Mutex::new(None)),
+    enabled: Arc::new(AtomicBool::new(false)),
   };
   let windows_media_shared = windows_media_state.latest_payload.clone();
+  let windows_media_enabled = windows_media_state.enabled.clone();
 
   tauri::Builder::default()
     .manage(spicy_bridge_state)
@@ -526,6 +574,7 @@ pub fn run() {
       );
       start_windows_media_monitor(
         windows_media_shared.clone(),
+        windows_media_enabled.clone(),
         app.handle().clone(),
       );
       setup_window(app);
@@ -539,11 +588,13 @@ pub fn run() {
       get_spicy_bridge_payload,
       get_spicy_bridge_status,
       get_windows_media_timeline,
+      set_windows_media_helper_enabled,
       set_auth_popup_visible,
       set_overlay_visible,
       focus_control_window,
       set_overlay_click_through,
-      set_hover_zone_enabled
+      set_hover_zone_enabled,
+      set_hover_zone_width
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

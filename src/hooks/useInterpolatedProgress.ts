@@ -7,7 +7,7 @@ import {
   onPlaybackSmoothnessChange
 } from "../services/settings";
 
-const TICK_MS = 33;
+const TICK_MS = 50;
 const STREAM_EXTRAPOLATE_MS = 30000;
 const WINDOWS_EXTRAPOLATE_MS = 12000;
 const HARD_SNAP_MS = 9000;

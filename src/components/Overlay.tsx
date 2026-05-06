@@ -28,7 +28,9 @@ const CLICK_THROUGH_DELAY = 120;
 const REAPPEAR_DELAY = 140;
 const TOGGLE_COOLDOWN_MS = 220;
 const STOP_HIDE_DELAY_MS = 1000;
-const HIDDEN_CHECK_INTERVAL_MS = 180;
+const HIDDEN_CHECK_INTERVAL_MS = 420;
+const HIDDEN_CHECK_SLOW_MS = 1300;
+const LOOP_LAG_MS = 260;
 const HOVER_MARGIN_PX = 8;
 const PLAYBACK_MISSING_GRACE_MS = 8000;
 const OUTSIDE_CONFIRM_TICKS = 2;
@@ -50,7 +52,7 @@ export function Overlay() {
   const showTimerRef = useRef<number | null>(null);
   const playbackStopTimerRef = useRef<number | null>(null);
   const playbackMissingTimerRef = useRef<number | null>(null);
-  const hiddenCheckIntervalRef = useRef<number | null>(null);
+  const hiddenCheckTimerRef = useRef<number | null>(null);
   const hideEngagedRef = useRef(false);
   const clickThroughEnabledRef = useRef(false);
   const lastToggleAtRef = useRef(0);
@@ -255,14 +257,34 @@ export function Overlay() {
   }, [playback?.trackId, playback?.isPlaying]);
 
   useEffect(() => {
-    if (hiddenCheckIntervalRef.current) {
-      window.clearInterval(hiddenCheckIntervalRef.current);
-      hiddenCheckIntervalRef.current = null;
-    }
+    let cancelled = false;
+    let lastTickNow = performance.now();
+    let expectedDelayMs = HIDDEN_CHECK_SLOW_MS;
 
-    hiddenCheckIntervalRef.current = window.setInterval(async () => {
-      if (!hideEngagedRef.current) return;
-      if (autoHiddenByPlaybackRef.current) return;
+    const schedule = (ms: number) => {
+      if (cancelled) return;
+      expectedDelayMs = ms;
+      hiddenCheckTimerRef.current = window.setTimeout(() => void tick(), ms);
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
+
+      const nowPerf = performance.now();
+      const lag = nowPerf - lastTickNow - expectedDelayMs;
+      lastTickNow = nowPerf;
+
+      // Under pressure, back off hover polling so cursor input stays responsive.
+      if (lag > LOOP_LAG_MS) {
+        schedule(HIDDEN_CHECK_SLOW_MS);
+        return;
+      }
+
+      if (!hideEngagedRef.current || autoHiddenByPlaybackRef.current) {
+        schedule(HIDDEN_CHECK_SLOW_MS);
+        return;
+      }
+
       try {
         const overlay = getCurrentWindow();
         const [mouse, pos, size] = await Promise.all([
@@ -280,21 +302,28 @@ export function Overlay() {
         if (inside) {
           // Keep passthrough active while cursor is still over overlay area.
           applyHoverState(true);
+          schedule(HIDDEN_CHECK_INTERVAL_MS);
           return;
         }
         outsideTickCountRef.current += 1;
-        if (outsideTickCountRef.current < OUTSIDE_CONFIRM_TICKS) return;
-        releaseHoverHide();
+        if (outsideTickCountRef.current >= OUTSIDE_CONFIRM_TICKS) {
+          releaseHoverHide();
+        }
       } catch {
         // If cursor query fails, keep prior behavior untouched.
       }
-    }, HIDDEN_CHECK_INTERVAL_MS);
+
+      schedule(HIDDEN_CHECK_INTERVAL_MS);
+    };
+
+    schedule(HIDDEN_CHECK_SLOW_MS);
 
     return () => {
+      cancelled = true;
       clearHoverTimers();
-      if (hiddenCheckIntervalRef.current) {
-        window.clearInterval(hiddenCheckIntervalRef.current);
-        hiddenCheckIntervalRef.current = null;
+      if (hiddenCheckTimerRef.current) {
+        window.clearTimeout(hiddenCheckTimerRef.current);
+        hiddenCheckTimerRef.current = null;
       }
       if (playbackStopTimerRef.current) {
         window.clearTimeout(playbackStopTimerRef.current);
@@ -317,11 +346,16 @@ export function Overlay() {
   const progressRatio = safeDurationMs > 0 ? Math.max(0, Math.min(1, safeProgressMs / safeDurationMs)) : 0;
   const hasActiveLyrics = Boolean(current);
   const noLyricsCompact = Boolean(playback && !hasActiveLyrics);
+  const hoverZoneWidth = noLyricsCompact ? 304 : 800;
   const spicyBridgeMessage = bridgeStatus?.connected
     ? playback
       ? "Bridge connected"
       : "Bridge connected, waiting for playback"
     : "Bridge disconnected";
+
+  useEffect(() => {
+    invoke("set_hover_zone_width", { width: hoverZoneWidth }).catch(() => undefined);
+  }, [hoverZoneWidth]);
 
   useEffect(() => {
     if (!playback) {
@@ -445,9 +479,11 @@ export function Overlay() {
   }, [sourceMode, playback?.trackId]);
 
   return (
-    <div className="overlay-root" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+    <div className="overlay-root">
       <div
         className={`overlay-shell pill-${pillStyleMode}${hidden || autoHiddenByPlayback ? " hidden" : ""}${noLyricsCompact ? " no-lyrics-compact" : ""}`}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         style={
           {
             "--pill-shade": String(pillShade),

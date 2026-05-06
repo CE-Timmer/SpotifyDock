@@ -42,7 +42,7 @@ export function useSpotifyPlayback() {
       let staleFallbackInFlight = false;
       let lastBridgePayloadFetchedAt = 0;
 
-      const WATCHDOG_MS = 350;
+      const WATCHDOG_MS = 1200;
       const STALE_ENTER_MS = 2800;
 
       const mergeWindowsMediaTimeline = (raw: string, force = false) => {
@@ -128,6 +128,10 @@ export function useSpotifyPlayback() {
       };
 
       void initial();
+
+      void invoke("set_windows_media_helper_enabled", {
+        enabled: playbackHelperMode === "windows"
+      }).catch(() => undefined);
 
       const mergeSnapshot = (incoming: PlaybackSnapshot): void => {
         streamTrackRef.current = incoming.trackId;
@@ -278,6 +282,7 @@ export function useSpotifyPlayback() {
 
       return () => {
         alive = false;
+        void invoke("set_windows_media_helper_enabled", { enabled: false }).catch(() => undefined);
         if (watchdogTimer) window.clearInterval(watchdogTimer);
         if (streamUnlisten) streamUnlisten();
         if (windowsMediaUnlisten) windowsMediaUnlisten();
@@ -309,6 +314,7 @@ export function useSpotifyPlayback() {
 
     return () => {
       alive = false;
+      void invoke("set_windows_media_helper_enabled", { enabled: false }).catch(() => undefined);
       window.clearInterval(interval);
     };
   }, [sourceMode, playbackHelperMode]);

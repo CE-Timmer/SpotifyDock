@@ -2,8 +2,11 @@ import { emitTo } from "@tauri-apps/api/event";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef } from "react";
 
-const HOVER_CHECK_MS = 250;
-const HIDE_PULSE_MS = 900;
+const HOVER_CHECK_MS = 550;
+const HOVER_CHECK_SLOW_MS = 1200;
+const HOVER_CHECK_IDLE_MS = 1800;
+const HIDE_PULSE_MS = 1400;
+const LOOP_LAG_MS = 260;
 
 export function HoverZone() {
   const insideRef = useRef(false);
@@ -15,8 +18,34 @@ export function HoverZone() {
   };
 
   useEffect(() => {
-    const timer = window.setInterval(async () => {
-      if (!insideRef.current) return;
+    let cancelled = false;
+    let timer: number | null = null;
+    let lastTickNow = performance.now();
+    let expectedDelayMs = HOVER_CHECK_IDLE_MS;
+
+    const schedule = (ms: number) => {
+      if (cancelled) return;
+      expectedDelayMs = ms;
+      timer = window.setTimeout(() => void tick(), ms);
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
+      const nowPerf = performance.now();
+      const lag = nowPerf - lastTickNow - expectedDelayMs;
+      lastTickNow = nowPerf;
+
+      // Under system pressure, back off instead of fighting for mouse time.
+      if (lag > LOOP_LAG_MS) {
+        schedule(HOVER_CHECK_SLOW_MS);
+        return;
+      }
+
+      if (!insideRef.current) {
+        schedule(HOVER_CHECK_IDLE_MS);
+        return;
+      }
+
       try {
         const win = getCurrentWindow();
         const [mouse, pos, size] = await Promise.all([
@@ -32,10 +61,11 @@ export function HoverZone() {
 
         if (!inside) {
           insideRef.current = false;
+          schedule(HOVER_CHECK_IDLE_MS);
           return;
         }
 
-        // Keep a very slow pulse only while truly inside, to recover missed events.
+        // Keep a slow pulse only while truly inside, to recover missed events.
         const now = Date.now();
         if (now - lastHidePulseAtRef.current >= HIDE_PULSE_MS) {
           emitHide();
@@ -43,9 +73,16 @@ export function HoverZone() {
       } catch {
         // best effort
       }
-    }, HOVER_CHECK_MS);
 
-    return () => window.clearInterval(timer);
+      schedule(HOVER_CHECK_MS);
+    };
+
+    schedule(HOVER_CHECK_IDLE_MS);
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
 
   return (
