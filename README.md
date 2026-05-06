@@ -1,5 +1,9 @@
 # SpotifyDock
 
+[![Version](https://img.shields.io/badge/version-1.1.0-4c8bf5)](#)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078d4)](#)
+[![License](https://img.shields.io/badge/license-MIT-2ea043)](./LICENSE)
+
 SpotifyDock is a Windows-first desktop lyrics overlay for Spotify built with Tauri, React, and TypeScript.
 
 It sits at the top of your screen as an always-on-top overlay, follows the current track, renders synced lyrics with smooth transitions, and can use either:
