@@ -57,6 +57,7 @@ export function Overlay() {
   const lastTitleRef = useRef<string | null>(null);
   const lastTrackRef = useRef<string | null>(null);
   const lastSeqRef = useRef<number | null>(null);
+  const autoHiddenByPlaybackRef = useRef(false);
 
   useEffect(() => onLyricsSourceModeChange(setSourceMode), []);
   useEffect(() => onPillStyleModeChange(setPillStyleMode), []);
@@ -187,6 +188,31 @@ export function Overlay() {
   };
 
   useEffect(() => {
+    const autoHidden = hideForMissingPlayback || hideForStoppedPlayback;
+    autoHiddenByPlaybackRef.current = autoHidden;
+
+    invoke("set_hover_zone_enabled", { enabled: !autoHidden }).catch(() => undefined);
+
+    if (autoHidden) {
+      clearHoverTimers();
+      hideEngagedRef.current = false;
+      outsideTickCountRef.current = 0;
+      setHidden(false);
+      clickThroughEnabledRef.current = true;
+      setClickThrough(true).catch(() => {
+        clickThroughEnabledRef.current = false;
+      });
+      return;
+    }
+
+    const shouldPassThrough = hideEngagedRef.current;
+    clickThroughEnabledRef.current = shouldPassThrough;
+    setClickThrough(shouldPassThrough).catch(() => {
+      clickThroughEnabledRef.current = !shouldPassThrough;
+    });
+  }, [hideForMissingPlayback, hideForStoppedPlayback]);
+
+  useEffect(() => {
     if (!playback) {
       if (playbackMissingTimerRef.current) {
         window.clearTimeout(playbackMissingTimerRef.current);
@@ -234,6 +260,7 @@ export function Overlay() {
 
     hiddenCheckIntervalRef.current = window.setInterval(async () => {
       if (!hideEngagedRef.current) return;
+      if (autoHiddenByPlaybackRef.current) return;
       try {
         const overlay = getCurrentWindow();
         const [mouse, pos, size] = await Promise.all([
@@ -243,7 +270,7 @@ export function Overlay() {
         ]);
 
         const left = pos.x - HOVER_MARGIN_PX;
-        const top = pos.y - HOVER_MARGIN_PX;
+        const top = 0;
         const right = pos.x + size.width + HOVER_MARGIN_PX;
         const bottom = pos.y + size.height + HOVER_MARGIN_PX;
         const inside = mouse.x >= left && mouse.x <= right && mouse.y >= top && mouse.y <= bottom;
@@ -276,6 +303,7 @@ export function Overlay() {
         playbackMissingTimerRef.current = null;
       }
       clickThroughEnabledRef.current = false;
+      invoke("set_hover_zone_enabled", { enabled: true }).catch(() => undefined);
       setClickThrough(false).catch(() => undefined);
     };
   }, []);

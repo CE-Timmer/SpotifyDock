@@ -14,10 +14,6 @@ export function HoverZone() {
     emitTo("main", "overlay-hover-hide").catch(() => undefined);
   };
 
-  const emitShow = () => {
-    emitTo("main", "overlay-reactivate").catch(() => undefined);
-  };
-
   useEffect(() => {
     const timer = window.setInterval(async () => {
       if (!insideRef.current) return;
@@ -36,7 +32,6 @@ export function HoverZone() {
 
         if (!inside) {
           insideRef.current = false;
-          emitShow();
           return;
         }
 
@@ -68,7 +63,6 @@ export function HoverZone() {
       }}
       onMouseLeave={() => {
         insideRef.current = false;
-        emitShow();
       }}
     />
   );

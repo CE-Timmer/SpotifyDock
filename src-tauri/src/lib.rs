@@ -133,6 +133,16 @@ fn set_overlay_click_through(app: tauri::AppHandle, enabled: bool) -> Result<(),
 }
 
 #[tauri::command]
+fn set_hover_zone_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+  let hover = app.get_webview_window("hover-zone").ok_or("hover window not found")?;
+  if enabled {
+    hover.show().map_err(|e| e.to_string())
+  } else {
+    hover.hide().map_err(|e| e.to_string())
+  }
+}
+
+#[tauri::command]
 fn get_spicy_bridge_payload(state: tauri::State<SpicyBridgeState>) -> Result<Option<String>, String> {
   let guard = state.latest_payload.lock().map_err(|e| e.to_string())?;
   Ok(guard.clone())
@@ -532,7 +542,8 @@ pub fn run() {
       set_auth_popup_visible,
       set_overlay_visible,
       focus_control_window,
-      set_overlay_click_through
+      set_overlay_click_through,
+      set_hover_zone_enabled
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
