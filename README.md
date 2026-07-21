@@ -190,10 +190,10 @@ Optional add-on:
 
 ### Spicetify extension folder
 
-Typical location:
+Run:
 
 ```text
-%APPDATA%\spicetify\Extensions
+spicetify config-dir
 ```
 
 Minimum expected file:
